@@ -1,31 +1,31 @@
-node {
- 	// Clean workspace before doing anything
-    deleteDir()
-
-    try {
-        stage ('Clone') {
-        	checkout scm
-        }
-        stage ('Build') {
-        	sh "echo 'shell scripts to build project...'"
-        }
-        stage ('Tests') {
-	        parallel 'static': {
-	            sh "echo 'shell scripts to run static tests...'"
-	        },
-	        'unit': {
-	            sh "echo 'shell scripts to run unit tests...'"
-	        },
-	        'integration': {
-	            sh "echo 'shell scripts to run integration tests...'"
-	        }
-        }
-      	stage ('Deploy') {
-            sh "echo 'shell scripts to deploy to server...'"
-      	}
-    } catch (err) {
-        currentBuild.result = 'FAILED'
-        throw err
+pipeline {
+  agent {
+    docker {
+      image 'node:6-alpine'
+      args '-p 3000:3000'
     }
-}
 
+  }
+  stages {
+    stage('Build') {
+      steps {
+        sh 'npm install'
+      }
+    }
+    stage('Test') {
+      environment {
+        CI = 'true'
+      }
+      steps {
+        sh './jenkins/scripts/test.sh'
+      }
+    }
+    stage('Deliver') {
+      steps {
+        sh './jenkins/scripts/deliver.sh'
+        input 'Finished using the web site? (Click "Proceed" to continue)'
+        sh './jenkins/scripts/kill.sh'
+      }
+    }
+  }
+}
